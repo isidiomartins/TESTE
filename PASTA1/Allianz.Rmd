@@ -149,4 +149,3 @@ Imprimindo
 ```{r}
 write.csv2(veio_final,"Allinz_final.csv")
 ```
-Fim
