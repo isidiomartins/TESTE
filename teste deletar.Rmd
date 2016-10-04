@@ -1,0 +1,22 @@
+---
+title: "Relatório Geral - Proagro (Trigo)"
+author: "João Isidio Freitas Martins"
+date: "Segunda, 6 de Junho de 2016"
+output: html_document
+---
+
+
+for(i in seq_along(ufs)){
+grafico1<-
+ggplot(pv[pv$UF==ufs[i],], aes(x=decendio, fill=N_EVENTO))+
+  geom_bar()+
+  scale_x_continuous(breaks=seq(1,36,2),labels=seq(1,36,2))+
+  ggtitle(paste("Número de Contratos com Eventos Registrados (Avisos)\npor Decêndio no",ufs[i],"\n2000-2015"))+
+  xlab("Decêndio do Início do Evento")+
+  ylab("Número de Contratos")+
+  theme(legend.position="bottom",
+        legend.text = element_text(size = 6),
+        legend.key.size = unit(0.35, "cm"),
+        legend.title = element_blank())
+print(grafico1)
+}

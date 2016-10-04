@@ -1,0 +1,141 @@
+---
+title: "Seguro da Uva - Sul"
+author: "João Isidio Freitas Martins"
+date: "Terça, 12 de julho de 2016"
+output: word_document
+---
+
+Puxando a base:
+```{r}
+library(ggplot2)
+library(dplyr)
+uva<-read.csv2("UVA_SUL.csv",stringsAsFactors = FALSE)
+str(uva)
+uva$ANO<-as.character(uva$ANO)
+names(uva)
+```
+
+Sinistralidade por ano:
+```{r}
+g1<-
+uva %>% 
+  select(ANO,INDENIZAÇÃO,PREMIO_TOTAL) %>% 
+  group_by(ANO) %>% 
+  summarise(INDENIZAÇÃO=sum(INDENIZAÇÃO,na.rm=T),
+            PREMIO=sum(PREMIO_TOTAL)) %>% 
+  mutate(SINISTRALIDADE=INDENIZAÇÃO/PREMIO)
+
+g1<-g1[-1,]
+
+ggplot(g1, aes(ANO,SINISTRALIDADE,fill=ANO))+
+  geom_bar(stat="identity",width=.5)+
+  scale_fill_brewer()+
+  geom_text(aes(ANO,SINISTRALIDADE,label=paste0(round(SINISTRALIDADE*100,0),"%")),size=6,vjust=-0.5)+
+  ggtitle("Sinistralidade Média (Indenização/Prêmio)\nno Sul 2006-2015")
+```
+
+Prêmio total e do produtor
+```{r}
+g2<-
+uva %>% 
+  select(ANO,PRÊMIO.LÍQUIDO,PREMIO_TOTAL) %>% 
+  group_by(ANO) %>% 
+  summarise(PRÊMIO.LÍQUIDO=sum(PRÊMIO.LÍQUIDO,na.rm=T),
+            PREMIO=sum(PREMIO_TOTAL)) %>% 
+  mutate(PP=PRÊMIO.LÍQUIDO/PREMIO)
+
+ggplot(g2, aes(ANO,PP,fill=ANO))+
+  geom_bar(stat="identity")+
+  geom_text(aes(ANO,PP,label=paste0(round(PP*100,2),"%")),size=6,vjust=-0.5)+
+  ggtitle("Percentual Médio do Prêmio Pago Pelo Produtor\nno Sul 2006-2015")
+```
+
+Percentual da Indenização por Evento Preponderante
+```{r}
+g3<-
+uva %>% 
+  select(EVENTO_PREPONDERANTE,INDENIZAÇÃO) %>% 
+  group_by(EVENTO_PREPONDERANTE) %>% 
+  summarise(INDENIZAÇÃO=sum(INDENIZAÇÃO,na.rm=T))
+
+g3<-g3[-1,]
+g3$PIND<-g3$INDENIZAÇÃO/sum(g3$INDENIZAÇÃO)
+
+ggplot(g3, aes(x=EVENTO_PREPONDERANTE,PIND,fill=EVENTO_PREPONDERANTE))+
+  geom_bar(stat="identity")+
+  geom_text(aes(x=EVENTO_PREPONDERANTE,PIND,label=paste0(round(PIND*100,2),"%")),size=6,vjust=-0.5)+
+  ggtitle("Percentual da Indenização por Evento Preponderante\nno Sul 2006-2015")
+
+ggplot(g3, aes(x="",PIND,fill=EVENTO_PREPONDERANTE))+
+  geom_bar(width = 1.01,stat="identity")+
+  coord_polar(theta = "y")+
+  scale_fill_brewer(palette="Paired")+
+  geom_text(aes(x="",PIND,label=paste0(round(PIND*100,1),"%")),size=8,vjust=c(0,0,0,-2,-4,-6))+
+  ggtitle("Percentual da Indenização por Evento Preponderante\nno Sul 2006-2015")+
+  xlab("")+
+  ylab("")
+```
+
+Eventos por ano
+```{r}
+g4<-
+uva %>% 
+  select(EVENTO_PREPONDERANTE,ANO,INDENIZAÇÃO) %>% 
+  group_by(ANO,EVENTO_PREPONDERANTE) %>% 
+  summarise(INDENIZAÇÃO=sum(INDENIZAÇÃO,na.rm=T))
+
+g4<-g4[order(g4$INDENIZAÇÃO),]
+g4<-g4[-(1:10),]
+g4<-g4[order(g4$ANO),]
+g4<-g4 %>% 
+  select(ANO,EVENTO_PREPONDERANTE,INDENIZAÇÃO) %>% 
+  group_by(ANO) %>% 
+  arrange(desc(EVENTO_PREPONDERANTE))
+g4<-g4[-1,]
+
+
+ggplot(g4, aes(ANO,INDENIZAÇÃO,fill=EVENTO_PREPONDERANTE))+
+  geom_bar(stat="identity",width=.5)+
+  scale_fill_brewer(direction = -1)+
+  ggtitle("Indenização Anual por Evento Preponderante\nno Sul 2006-2015")
+
+ggplot(g4, aes(ANO,INDENIZAÇÃO,fill=EVENTO_PREPONDERANTE))+
+  geom_bar(stat="identity", position="dodge")+
+  ggtitle("Indenização Anual por Evento Preponderante\nno Sul 2006-2015")
+
+ggplot(g4, aes(ANO,INDENIZAÇÃO,group=EVENTO_PREPONDERANTE,color=EVENTO_PREPONDERANTE))+
+  geom_line(size = 1.5)+
+  ggtitle("Indenização Anual por Evento Preponderante\nno Sul 2006-2015")
+```
+
+Seguradoras que tem uva - historico
+```{r}
+g5<-
+uva %>% 
+  select(ANO,SEGURADORA) %>% 
+  group_by(ANO) %>% 
+  summarise(SEGURADORAS=length(unique(SEGURADORA)))
+
+ggplot(g5, aes(ANO,SEGURADORAS))+
+  geom_bar(stat="identity",width=.5,fill="blue")+
+  geom_text(aes(x=ANO,SEGURADORAS,label=SEGURADORAS),size=6,vjust=-0.5)+
+  ggtitle("Número de Seguradoras com apólices para Uva no Sul\n2006-2015")
+```
+
+
+
+
+
+is proagro + is psr /valor da produção
+```{r}
+g6<-
+uva %>% 
+  select(ANO,IMPORTANCIA_SEGURADA) %>% 
+  group_by(ANO) %>% 
+  summarise(SEGURADORAS=length(unique(SEGURADORA)))
+
+ggplot(g5, aes(ANO,SEGURADORAS,fill=ANO))+
+  geom_bar(stat="identity")+
+  geom_text(aes(x=ANO,SEGURADORAS,label=SEGURADORAS),size=6,vjust=-0.5)+
+  ggtitle("Número de Seguradoras com apólices para Uva no Sul\n2006-2015")
+```

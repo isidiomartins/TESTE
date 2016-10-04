@@ -1,0 +1,205 @@
+---
+title: "Relatório Geral - Proagro (Trigo)"
+author: "João Isidio Freitas Martins"
+date: "Segunda, 6 de Junho de 2016"
+output: html_document
+---
+
+Como rapidamente pode-se perceber, por meio do comando `View(proagro)`, a base fornecida é cheia de valores NA (não avaliaveis) para a maioria 
+dos vetores (variaveis). Isso implica, algumas vezes, em trabalhar com subconjuntos dos dados analisados.
+
+O primeiro desafio em questão é dispor da frequência de avisos por mês e ano, tendo a variavel INI.EVENTO (data do ínicio do evento) como
+referência. que fique claro que não se estará apresentando aqui a totalidade dos contratos, nem mesmo sequer a totalidade dos que tiveram avisos.
+
+Deve-se então carregar a base tratada do proagro:
+
+```{r}
+proagro<-readRDS("proagro.rds")
+```
+
+A fómula abaixo cria um novo dataframe especifico para a análise. A estrutura é flexivel na medida que permite que no futuro possam ser 
+adicionadas outras variveis da base proagro.
+
+```{r}
+sub1<-data.frame(ind=proagro$R..SINISTRO,
+                mes=format(proagro$INI.EVENTO, "%m"),
+                ano=format(proagro$INI.EVENTO, "%Y"),
+                evento=proagro$N_EVENTO,
+                area=proagro$AREA_ha,
+                tipo=proagro$N_REMESSA,
+                pres=proagro$ZARC)
+sub1<-sub1[!is.na(sub1$ano),]
+sub1<-sub1[sub1$ano!=1020,]
+```
+
+Obs: É interesante que as variavéis "proagro$R..SINISTRO" e "proagro$AREA_ha" não tenham valores NA. A variavel de área sequer tem valor 
+zero (o que, diga-se de passagem, é muito razoavel). O que justifica a não exclusão de mais linhas.
+
+```{r}
+table(proagro$AREA_ha==NA)
+table(proagro$AREA_ha==0)
+table(proagro$R..SINISTRO==NA)
+```
+
+Iniciemos os gráficos:
+
+```{r}
+library(ggplot2)
+```
+
+Com ciclos de plantio e de eventos climaticos bem definidos, era de se esperar um comportamento padronizado nos avisos. Os eventos se concentram
+no mês de setembro:
+
+```{r echo=FALSE}
+ggplot(sub1, aes(x=mes,fill=ano)) +
+  geom_bar() +
+  ggtitle("Número de Contratos com Aviso\npor Mês e Ano")+
+  xlab("Mês do Início do Evento")+
+  ylab("Número de Contratos")
+```
+
+Apresenta-se aqui os grafícos anuais em separado:
+
+```{r echo=FALSE}
+ggplot(sub1, aes(x=mes,fill=evento)) +
+  geom_bar() +
+  ggtitle("Número de Contratos com Aviso\npor Mês e Ano")+
+  xlab("Mês do Início do Evento")+
+  ylab("Número de Contratos")
+```
+
+Afim de simplificar a analise, nos concentremos nos últimos 5 anos.
+
+```{r}
+sub2<-sub1[sub1$UF=='RS',]
+```
+
+Pode-se repetir os grafícos anteriores para esse novo conjunto de anos:
+
+```{r echo=FALSE}
+ggplot(sub2, aes(x=mes,fill=ano)) +
+  geom_bar() +
+  ggtitle("Número de Contratos com Aviso\npor Mês e Ano\n2011-2015")+
+  xlab("Mês do Início do Evento")+
+  ylab("Número de Contratos") 
+```
+
+```{r echo=FALSE}
+ggplot(sub2, aes(x=mes,fill=evento)) +
+  geom_bar() +
+  ggtitle("Número de Contratos com Aviso\npor Mês e Ano\n2011-2015")+
+  xlab("Mês do Início do Evento")+
+  ylab("Número de Contratos") 
+```
+
+Agora os mesmos graficos com a indenização nas escalas:
+
+```{r echo=FALSE}
+ggplot(sub2, aes(x=mes,y=ind, fill=evento)) +
+  geom_bar(stat = "identity") +
+  ggtitle("Valor Agregado da Indenização\npor Mês e Ano\n2011-2015")+
+  xlab("Mês do Início do Evento")+
+  ylab("Indenização - R$") 
+```
+
+```{r echo=FALSE}
+ggplot(sub2, aes(x=mes,y=ind, fill=ano)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~ano) +
+  ggtitle("Valor Agregado da Indenização\npor Mês e Ano\n2011-2015")+
+  xlab("Mês do Início do Evento")+
+  ylab("Indenização - R$") 
+```
+
+Que tal desagregar a informação por evento. Mais uma vez, para toda série histórica.
+
+```{r echo=FALSE}
+ggplot(sub1, aes(x=mes,fill=evento)) +
+  geom_bar() +
+  ggtitle("Número de Contratos com Aviso\npor Mês e Ano")+
+  xlab("Mês do Início do Evento")+
+  ylab("Número de Contratos")
+```
+
+Agora somente para os últimos 6 anos:
+  
+```{r echo=FALSE}
+ggplot(sub2, aes(x=mes,fill=evento)) +
+  geom_bar() +
+  ggtitle("Número de Contratos com Aviso\npor Mês e Ano")+
+  xlab("Mês do Início do Evento")+
+  ylab("Número de Contratos")+
+  theme(legend.position="top")
+``` 
+
+
+
+
+
+```{r echo=FALSE}
+ggplot(sub1, aes(x=mes,fill=evento)) +
+  geom_bar() +
+  facet_wrap(~ano)+
+  ggtitle("Número de Contratos com Aviso\npor Mês e Ano")+
+  xlab("Mês do Início do Evento")+
+  ylab("Número de Contratos")
+```
+
+
+ggplot(sub1, aes(x=mes, y=ind)) +
+  geom_bar(stat = "identity", position = "dodge", aes(fill = ano))+
+  facet_wrap(~ano)+
+  ggtitle("Indenização de contratos com aviso\ndistribuidos por mês e ano")+
+  xlab("Mês do Início do Evento")+
+  ylab("Indenização")
+
+
+ggplot(sub1, aes(x=mes,y=ind)) +
+  geom_boxplot()
+  geom_bar() +
+  geom_line() +
+  ggtitle("Número de contratos com aviso\ndistribuidos por mês e ano") +
+  xlab("Mês do Início do Evento") +
+  ylab("Número de Contratos")
+
+names(proagro)
+
+  geom_bar(stat = "identity",aes(fill = ano.ini.event), position = "dodge") +
+  facet_wrap(~ano.ini.event)
+
+ggplot(sub1, aes(x=ind,colour=ano)) +
+geom_histogram()
+
+View(proagro[proagro$R..SINISTRO>0,])
+proagro[55399,41]<-
+
+
+Nota: Apresentar por decendio
+length(proagro)
+
+tapply(sub$indenizaçao,c(sub$ano.ini.event,sub$mes.ini.event),sum)
+
+summary(sub)
+
+
+
+rm(t)
+t<-proagro$INI.EVENTO==1020-07-01
+t[t==T]
+proagro[proagro$INI.EVENTO==1020-07-01,]
+1020-07-01" "1020-07-01"
+proagro$INI.EVENTO[order(format(proagro$INI.EVENTO, "%Y"))][1:100]
+sum(proagro$INI.EVENTO==as.Date("1020-07-01"))
+
+proagro.szarc<-proagro[proagro$ZARC=='S / ZARC',]
+
+proagro.szarc$ano.emi<-format(proagro.szarc$DT.EMISSAO, "%Y")
+
+proagro.szarc
+
+ggplot(proagro.szarc,aes(x=ano.emi))+
+  geom_bar(fill='blue')+
+  geom_text(aes(label = ..count..))+
+  ggtitle("Número de Contratos sem ZARC\npor Ano")+
+  xlab("Ano")+
+  ylab("Número de Contratos")

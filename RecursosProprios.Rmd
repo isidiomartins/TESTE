@@ -1,0 +1,61 @@
+---
+title: "Proagro - Recursos próprios"
+author: "João Isidio Freitas Martins"
+date: "Friday, July 01, 2016"
+output:
+  word_document: default
+  html_document:
+    theme: journal
+---
+
+Caros,
+
+Afim de apurar o quão representativa é a população dos que contratam proagro para recursos próprios é que iremos investigar os 334.902 contratos disponíveis para a cultura de trigo.
+
+Há uma variável categórica que, creio eu, associa o contrato a origem dos recursos obtidos pelo produtor: N_PROGRAMA
+
+Vejamos as 41 categorias dessa variável.
+
+```{r echo=FALSE}
+proagro<-readRDS("proagro.alternativo.rds")
+unique(proagro$N_PROGRAMA)
+```
+
+Não sei se todos concordam, mas creio serem somente as categorias abaixo as que representam os contratos feitos para recursos próprios. Lembrando que exclui aqueles que consideravam recursos próprios de natureza complementar.
+
+```{r echo=FALSE}
+lista<-c(
+"REC LIVRES INTEGRAL",                               
+"ATIVIDADE NAO FINANCIADA ENQUADRADA NO PROAGRO")
+lista
+```
+
+Podemos então calcular o número de contratos enquadrados:
+
+```{r echo=FALSE}
+sum(proagro$N_PROGRAMA %in% lista)
+```
+
+Que em percentual seria:
+```{r echo=FALSE}
+paste0(round(100*sum(proagro$N_PROGRAMA %in% lista)/nrow(proagro),2),"%")
+```
+
+Por ano:
+```{r echo=FALSE,warning=FALSE}
+calen<-readRDS("calendario.rds")
+proagro<-merge(proagro,calen,by.x="DT.EMISSAO",by.y="data")
+Percentual<-tapply(proagro$N_PROGRAMA,proagro$ano,
+       function(x){
+         paste0(round(100*sum(x %in% lista)/nrow(proagro),2),"%")
+       })
+Absoluto<-tapply(proagro$N_PROGRAMA,proagro$ano,
+       function(x){
+         sum(x %in% lista)
+      })
+library(knitr)
+kable(cbind(Absoluto,Percentual), format = "markdown")
+```
+
+Fim
+

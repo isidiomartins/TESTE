@@ -1,0 +1,159 @@
+---
+title: "Artigos mais enxutos?"
+author: "João Isidio Freitas Martins"
+date: "Friday, July 29, 2016"
+output: word_document
+---
+Premissas:
+*O tamanho dos artigos deveria diminiur com o tempo.
+*Custo de tempo.
+*Padrão social atual.
+*Dever de acadêmico condensar a informação.
+
+Os pacotes necessarios para a análise são:
+```{r}
+library(stringr)
+library(rvest)
+library(stringr)
+library(dplyr)
+library(magrittr)
+```
+
+Afim de avaliar a evolução do numero de páginas nos artigos cientificos faz-se necessario constituir base de dados dos mesmos. O site google Acadêmico fornece tais dados, de forma não estruturada, acerca dos artigos mais citados pela comunidade cientifica.
+
+O uso de webscraping se fará necessario. O que será facilitado pelo padrão observado no link do site google Acadêmico, que tem, basicamente, a seguinte estrtura:
+
+```{r}
+"https://scholar.google.com.br/citations?hl=pt-BR&view_op=list_hcore&venue=H--JoiVp8x8J.2016&vq=en&cstart=20"
+```
+
+*O valor __"H--JoiVp8x8J"__ refere-se a revista acadêmica que está sendo pesquisada.
+*O termo __"en"__ ao páis (ou área do conhecimento como subclasses de __"en"__) da revista em questão. O cunjunto dos paises segue no vetor:
+```{r}
+paises<-c("en","eng","bio","hum","soc","phy","bus","chm","med","zh","pt","es","de","ru","fr","ja","ko","pl","uk","id")
+```
+
+__"20"__ é o valor que define qual das páginas de determinada revista e país o navegador visitará.  São mostrados 20 artigos por página, então se o atributo definido fosse 40, o resultado seria a lista dos artigos de número 40 ate 60 daquela revista.
+
+O númerop de links fronecido pelo google não são limitados ao número de artigos que uma revista tem. Portanto, para determinar a última página a ser visitada para cada revista faz-se necessaria a extração da página incial de cada país-área.
+
+```{r}
+tab1<-as.list(seq_along(paises))
+
+for(i in seq_along(paises)){
+download.file(
+  paste0("https://scholar.google.com.br/citations?view_op=top_venues&hl=pt-BR&vq=",
+         paises[i]),
+  destfile=paste0(paises[i],".html")
+  )
+
+goo<-read_html(paste0(paises[i],".html"))
+
+tab1[i]<-goo %>%
+  html_table()
+
+file.remove(paste0(paises[i],".html"))
+}
+
+rm(goo,i)
+```
+
+As tabelas que foram colocadas na lista agora serão concatenadas e formarão a base das revistas. Atribui-se novos rótulos afim de facilitar futuras pesquisas nos campos.
+```{r}
+names(tab1[[1]])<-c("indice","publicacao","indice.h5","mediana.h5")
+tab.face<-tab1[[1]] %>%
+  mutate(origem = paises[1])
+for(i in seq_along(paises)[-1]){
+  names(tab1[[i]])<-c("indice","publicacao","indice.h5","mediana.h5")
+  tab.face<-rbind(tab.face,tab1[[i]] %>%
+                    mutate(origem = paises[i])
+                  )
+}
+
+rm(tab1,i)
+```
+
+Aqui filtram-se os valores que surgem am multiplas listas. Ex: A revista Nature surge no ranking das revistas em inglês e no ranking das revistas de Ciências Biológicas e Geociências.
+```{r}
+duplicados<-table(tab.face$publicacao)[table(tab.face$publicacao)>1]
+dim(duplicados)
+View(duplicados[order(duplicados,decreasing = T)])
+```
+
+tab.face$publicacao[order(tab.face$publicacao,decreasing = T)]
+
+duplicated(tab.face$publicacao)
+
+tab.face[tab.face$publicacao=="Nature",]
+
+tab.face[duplicated(tab.face$publicacao),] %>%
+arrange(publicacao)
+
+A função está mostrando só as duplicatas, ou seja, sem mostrar o elemento que surge da primeira vez. Excluir esssas linhas é o mesmo que excluir as duplicatas.
+
+
+
+
+
+
+Tirando o vetor de paginas interno.
+```{r}
+download.file("https://scholar.google.com.br/citations?view_op=top_venues&hl=pt-BR", 
+              destfile="goolist.txt")
+```
+
+
+```{r}
+codepage <- t(read.table("goolist.txt",comment.char=""))
+codepage <- as.vector(codepage)
+filtro <- grepl(pattern = "venue=[0-9A-Za-z_-]+.2016", x = codepage)
+sum(filtro)
+
+elementos <- codepage[filtro]
+
+revistas<-str_extract(string = elementos, pattern = "[0-9A-Za-z_-]{12}")
+```
+
+enderecos<- data.frame(matrix(rep("EMPTY",2000),ncol=100,nrow=20),stringsAsFactors=FALSE)
+for(j in seq_along(revistas)){
+  for(i in 1:20){
+    enderecos[i,j] <- paste0("https://scholar.google.com.br/citations?hl=pt-BR&view_op=list_hcore&venue=",
+       revistas[j],".2016&vq=en&cstart=",i*20)
+}}
+
+Dentro dos links:
+
+for(j in seq_along(revistas)){
+  for(i in 0:20){
+    download.file(enderecos[i,j], destfile=paste("rev_",i,"_pag_",j,".html"))
+    goo<-read_html(paste("rev_",i,"_pag_",j,".html"))
+    goo %>%
+    html_table(fill = TRUE) %>%
+    View()
+    }}
+    
+
+################ Provavelmente lixo
+codepagesub <- t(read.table("teste.txt",comment.char="",sep="/"))
+filtro.titulo <- grepl(pattern = "hl=pt-BR&amp;oe=ASCII[\"]?><span>", x = codepagesub)
+sum(filtro.titulo)
+elementos.tit <- codepagesub[filtro.titulo]
+
+x<-rep("a",20)
+for(i in 1:20){
+x[i]<-sub("<","",
+strsplit(elementos.tit[i],split = ">")[[1]][6]
+)}
+x
+################
+Um dos problemas é delimitar o número maximo de paginas que devem ser baixadas dentro de uma revista.
+Na página inicical de cada país é possivel encontrar o índice H5, que até onde se pode notar refere-se ao
+número de artigos com citações daquela revista.
+
+sub(">","",
+str_extract(string = elementos, pattern = ">[0-9]{3}"))
+
+a variavel vq no link define o pais (ou subconjunto de ciencias no caso do ingles), permitindo uma 
+futura desagregação por linguas.
+
+

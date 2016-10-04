@@ -1,0 +1,181 @@
+---
+title: "Tratamento da Base - Proagro"
+author: "João Isidio Freitas Martins"
+date: "Segunda, 6 de Junho de 2016"
+output: word_document
+---
+
+##Tratamento da base
+Segue abaixo o método adotado para o tratamento da base de dados referente aos contratos de proagro da cultura de trigo.
+
+##Subindo a base
+O comando abaixo mostra os arquivos do repositório compartilhado.
+```{r}
+list.files("//masrv208/Zoneamento Agricola/DADOS BACEN")
+```
+
+Cria o dataframe da base PROAGRO-TRIGO.
+```{r}
+proagro<-read.csv2("//masrv208/Zoneamento Agricola/DADOS BACEN/BCB_DEROP_TRIGO_aa_2004_a_31_03_2016_V00.csv", stringsAsFactors = FALSE)
+```
+
+É possível ter uma visualização com o comando `View(head(proagro,200))`.
+
+A estrutura revela que os dados estão quase todos na forma de carácter, implicando que os mesmos devam ser tradados;
+```{r}
+str(proagro)
+```
+
+Retorna o número de elementos distintos que tem cada variável.
+```{r}
+var.elem<-sapply(proagro,function(x){length(unique(x))})
+var.elem<-var.elem[order(var.elem)]
+var.elem
+```
+
+## Tratando os valores numéricos
+A função "limpa.num" fará os acertos necessários nos valores observados como numéricos.
+```{r}
+limpa.num <- function(x) {
+  add<- x
+  add<-gsub(pattern = "%",replacement = "",x = add)
+  add<-gsub(pattern = " ",replacement = "",x = add)
+  add<-gsub(pattern = "\\.",replacement = "",x = add)
+  add<-gsub(pattern = ",",replacement = ".",x = add)
+  add<-as.numeric(add)
+  return(add)
+}
+```
+
+A parte da tabela proagro com os números acertados.
+```{r}
+proagro[, 30:41]<- as.data.frame(lapply(X = proagro[, 30:41],FUN = limpa.num))
+```
+
+##Tratando os valores de tempo(datas)
+Agora tratar-se-ão os dados em formato de data. Eis os campos que tem datas:
+```{r}
+names(proagro[,c(4,5,8:13,16,18)])
+```
+
+Para uma visualização desses campos: `View(head(proagro[,c(4,5,8:13,16,18)],1000))`. Procurando o padrão de datas para cada vetor:
+```{r}
+vetores.data<-sapply(proagro[,c(4,5,8:13,16,18)],unique)
+```
+
+A fórmula seguinte traz um resumo do número de caracteres contido em cada linha do vetor. Grosso modo, os textos de dez caracteres representam as datas que estão no formato correto, os de zero estão vazios e os de um por terem valor igual a zero. Se forem poucas as situações em que os valores distinguem de 0,1 ou 10 então significa que a fórmula "limpa.data" funcionará bem.
+
+Testemos a hipótese com o seguinte relatório:
+```{r}
+data.formato<-function(x){
+  a1<-table(nchar(x))
+  a2<-table(x[nchar(x)!=0 & nchar(x)!=1 & nchar(x)!=10])
+  return(list(a1,a2))
+}
+```
+
+Eis o relatório:
+```{r}
+lapply(proagro[,c(4,5,8:13,16,18)],data.formato)
+```
+
+* Problemas:
+    + INI.COLHEITA: 21566 elementos com 6 dígitos (de 87276 com 10), alguns com mês e ano (112006), mas a maioria com ano e mês (200610).
+    + INI.EVENTO: 21564 elementos com 6 dígitos (de 87276 com 10), alguns com mês e ano (112006), mas a maioria com ano e mês (200610).
+
+**A solução será adicionar o dia "01" ao fim da string que tenha 6 elementos (aquelas que tem apenas ano e mês)**. Cabe ao analista considerar o impacto dessa informação em sua analise.
+
+Aqui reestrutura-se a string de 6 caracteres para coloca-la em formato de data.
+```{r}
+limpa.data <- function(x) {
+  add<-x
+  for(i in 1:length(add)){
+    if(nchar(add[i])==6){
+      add[i]<-paste0(add[i],"01")
+      add[i]<-paste0(substring(add[i],first = c(1,5,7) ,last = c(4,6,8))[3],"/",
+                     substring(add[i],first = c(1,5,7) ,last = c(4,6,8))[2],"/",
+                     substring(add[i],first = c(1,5,7) ,last = c(4,6,8))[1])      
+    } else {
+      add[i]<-add[i]
+    }}
+  return(as.Date(add, format="%d/%m/%Y"))
+}
+```
+
+Eis as datas com o dia adicionado e estrutura alterada:
+```{r}
+proagro[,c(4,5,8:13,16,18)] <- as.data.frame(lapply(X = proagro[,c(4,5,8:13,16,18)],FUN = limpa.data))
+```
+
+##Tratando Textos
+
+Eis os campos que tem textos:
+```{r}
+names(proagro[,-c(1,3,14,4,5,8:13,16,18,30:41)])
+```
+
+Para usar a função `str_trim()`:
+```{r}
+library(stringr)
+```
+A função será útil para retirar os valores em branco antes de depois da string.
+
+Afim de realizar o trabalho em escala:
+```{r}
+limpa.texto <- function(x) {
+  add<-x
+  add<-str_trim(add)
+  return(add)
+}
+```
+
+A parte da tabela proagro com os textos acertados.
+```{r}
+proagro[,-c(1,3,14,4,5,8:13,16,18,30:41)] <- as.data.frame(lapply(X = proagro[,-c(1,3,14,4,5,8:13,16,18,30:41)], FUN = limpa.texto), stringsAsFactors = FALSE)
+```
+
+##Correções pontuais:
+
+* Valor positivo na indenização:
+```{r}
+proagro[proagro$R..SINISTRO>0,c(1,3,41)]
+```
+
+Mudando o sinal,
+```{r}
+proagro[55399,41] <- -proagro[55399,41]
+```
+
+##Salvamento
+
+Por fim, salva-se a base tratada num arquivo RDS.
+```{r}
+saveRDS(proagro, file = "proagro.rds")
+```
+
+Parar averiguar o salvamento:
+```{r}
+rm(list=ls())
+proagro<-readRDS("proagro.rds")
+proagro[1:10,1:4]
+```
+
+Salvar em CSV:
+```{r}
+write.csv2(proagro,"//masrv208/Zoneamento Agricola/DADOS BACEN/Base Tratada - Trigo Proagro/proagro_tratada.csv")
+```
+
+Fim
+
+Fórmula opcional para a data:
+
+```{r}
+limpa.data <- function(x) {
+  return(as.Date(x, format="%d/%m/%Y"))
+}
+```
+
+Salvamento opcional:
+```{r}
+saveRDS(proagro, file = "proagro.alternativo.rds")
+```

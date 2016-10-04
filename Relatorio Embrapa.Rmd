@@ -1,0 +1,156 @@
+---
+title: "Relatório Embrapa"
+author: "João Isidio Freitas Martins"
+date: "Monday, June 13, 2016"
+output: word_document
+---
+
+##Objetivo
+
+O objetivo do trabalho é dar ciência à Embrapa da distribuição no tempo dos eventos causadores de perda.
+
+Carrega-se então a base tratada do proagro:
+
+```{r}
+proagro<-readRDS("proagro.alternativo.rds")
+```
+
+##Decêndios
+
+Todo o trabalho de zoneamento realizado pela Embrapa será apresentado em períodos de dez dias (decêndios), portanto deve-se converter as datas da base proagro em decêndios.
+
+A variável de data em questão é a INI.EVENTO, ou seja, a data registrada para o inicio do evento climático.
+
+Não haverá rearranjo das datas com formato inadequado, aproveita-se só aquilo que esta no padrão XX/XX/XXXX. 
+
+##Calendario
+
+Deve-se então constituir um calendário de conversão de datas em decêndios:
+```{r}
+dia<-rep(c(01:31),12)
+dec<-rep(1:36,rep(c(10,10,11),12))
+mes<-rep(01:12,rep(31,12))
+ano<-rep(2000:2016,rep(372,17))
+```
+
+As variáveis (vetores) __dia__, __dec__ e __mes__ tem exatos 372 elementos, e serão emparelhadas. Quanto ao ano, por meio da reciclagem, repetir-se-á o padrão das tabelas emparelhadas. Chega-se a uma tabela global:
+```{r}
+calen<-as.data.frame(cbind(data=paste0(dia,"/",mes,"/",ano),
+                           dia,mes,ano,decendio=dec), 
+                     stringsAsFactors = FALSE)
+```
+
+```{r echo=FALSE,error=FALSE,warning=FALSE}
+library(knitr)
+kable(calen[55:65,], format = "markdown")
+```
+
+Vê-se que as variáveis ficaram no formato de texto.
+```{r echo=FALSE,error=FALSE}
+str(calen)
+```
+
+Deve-se então converter as strings da variável data em datas:
+```{r echo=FALSE,error=FALSE}
+calen$data<-as.Date(calen$data, format="%d/%m/%Y")
+kable(calen[55:65,], format = "markdown")
+```
+
+A função `as.date()` trará os valores NA para as datas impossíveis (ex: 31/02/2000).
+
+O calendário deve ter eliminadas as datas com valores NA:
+```{r echo=FALSE,error=FALSE}
+calen<-calen[!is.na(calen$data),]
+kable(calen[55:65,], format = "markdown")
+```
+
+Agora cabe converter as outras strings em números:
+```{r}
+calen$dia<-as.numeric(calen$dia)
+calen$mes<-as.numeric(calen$mes)
+calen$ano<-as.numeric(calen$ano)
+calen$decendio<-as.numeric(calen$decendio)
+```
+
+##Relacionando as bases
+
+Correlacionando proagro e calen:
+
+```{r}
+pv<-merge(proagro,calen,by.x="INI.EVENTO",by.y="data")
+```
+
+Aqui, na base pv, só tem as linhas em que a data para a variável INI.EVENTO não é nula.
+
+##Os gráficos
+
+```{r error=FALSE, warning=FALSE}
+library(ggplot2)
+```
+
+###Por contratos
+
+Brasil
+```{r echo=FALSE,error=FALSE, warning=FALSE, fig.width = 6, fig.height = 4, dpi = 144}
+ggplot(pv, aes(x=decendio, fill=N_EVENTO))+
+  geom_bar()+
+  scale_x_continuous(breaks=seq(1,36,2),labels=seq(1,36,2))+
+  ggtitle("Número de Contratos com Eventos Registrados (Avisos)\npor Decêndio no BRASIL\n2000-2015")+
+  xlab("Decêndio do Início do Evento")+
+  ylab("Número de Contratos")+
+  theme(legend.position="bottom",
+        legend.text = element_text(size = 6),
+        legend.key.size = unit(0.35, "cm"),
+        legend.title = element_blank())
+```
+
+Para os últimos 5 anos:
+```{r echo=FALSE,error=FALSE, warning=FALSE, fig.width = 6, fig.height = 4, dpi = 144}
+ggplot(pv[pv$ano %in% 2011:2015,], aes(x=decendio, fill=N_EVENTO))+
+  geom_bar()+
+  scale_x_continuous(breaks=seq(1,36,2),labels=seq(1,36,2))+
+  ggtitle("Número de Contratos com Eventos Registrados (Avisos)\npor Decêndio no BRASIL\n2011-2015")+
+  xlab("Decêndio do Início do Evento")+
+  ylab("Número de Contratos")+
+  theme(legend.position="bottom",
+        legend.text = element_text(size = 6),
+        legend.key.size = unit(0.35, "cm"),
+        legend.title = element_blank())
+```
+
+Eis os estados que terão gráficos:
+```{r echo=FALSE}
+ufs<-unique(pv$UF)[-c(4,5,6)]
+ufs
+```
+
+```{r echo=FALSE,error=FALSE, warning=FALSE, fig.width = 6, fig.height = 4, dpi = 144}
+for(i in seq_along(ufs)){
+  graf1<-
+    ggplot(pv[pv$UF==ufs[i],], aes(x=decendio, fill=N_EVENTO))+
+    geom_bar()+
+    scale_x_continuous(breaks=seq(1,36,2),labels=seq(1,36,2))+
+    ggtitle(paste("Número de Contratos com Eventos Registrados (Avisos)\npor Decêndio no",ufs[i],"\n2000-2015"))+
+    xlab("Decêndio do Início do Evento")+
+    ylab("Número de Contratos")+
+    theme(legend.position="bottom",
+          legend.text = element_text(size = 6),
+          legend.key.size = unit(0.35, "cm"),
+          legend.title = element_blank())
+  graf2<-
+    ggplot(pv[pv$UF==ufs[i] & pv$ano %in% 2011:2015,], aes(x=decendio, fill=N_EVENTO))+
+    geom_bar()+
+    scale_x_continuous(breaks=seq(1,36,2),labels=seq(1,36,2))+
+    ggtitle(paste("Número de Contratos com Eventos Registrados (Avisos)\npor Decêndio no",ufs[i],"\n2011-2015"))+
+    xlab("Decêndio do Início do Evento")+
+    ylab("Número de Contratos")+
+    theme(legend.position="bottom",
+          legend.text = element_text(size = 6),
+          legend.key.size = unit(0.35, "cm"),
+          legend.title = element_blank())
+print(graf1)
+print(graf2)
+}
+```
+
+Fim

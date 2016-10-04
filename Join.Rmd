@@ -1,0 +1,42 @@
+---
+title: "Join"
+author: "João Isidio Freitas Martins"
+date: "Thursday, June 30, 2016"
+output: html_document
+---
+
+```{r}
+x1<-c(1,2,3,"a","b","c")
+dim(x1)<-c(3,2)
+x2<-c(2,3,4,"b","c","d")
+dim(x2)<-c(3,2)
+x1
+x2
+```
+
+Tentando os "merges" que conheço
+```{r}
+merge(x1,x2,all=T)
+merge(x1,x2,all=F)
+merge(x1,x2,all.x=T)
+merge(x1,x2,all.y=T)
+```
+
+1a e 4d não deram match, mesmo assim aparecem. Nenhuma dessas funções me traz os seguinte resultado:
+
+| V1 | V2 |
+|----|----|
+| 1  | a  |
+| 4  | d  |
+
+x1<-as.data.frame(x1)
+x2<-as.data.frame(x2)
+names(x2)<-c("A","B")
+
+
+library(dplyr)
+?anti_join
+
+p1<-anti_join(x2,x1,by=c("A","B"))
+p2<-anti_join(x1,x2,by=c("A","B"))
+rbind(p1,p2)
